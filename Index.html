@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ms" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard RPH Digital - Hairul Goh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-card { background: #ffffff; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        textarea::-webkit-scrollbar { width: 4px; }
+        textarea::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        
+        /* GAYA PDF DIOPTIMUMKAN: 1 MUKA SURAT */
+        .pdf-label { font-weight: bold; color: #1e3a8a; text-transform: uppercase; font-size: 9px; margin-bottom: 2px; display: block; }
+        .pdf-value { color: #111827; margin-bottom: 8px; font-size: 11px; font-weight: 500; line-height: 1.3; }
+        .pdf-section-title { 
+            background-color: #f3f4f6; padding: 6px 12px; border-left: 5px solid #1e3a8a; 
+            font-weight: 800; color: #1e3a8a; margin: 12px 0 8px 0; font-size: 10px; text-transform: uppercase; 
+        }
+        #pdf_wrapper { position: absolute; left: -9999px; top: 0; background: white; visibility: visible; }
+
+        /* Fungsi Print untuk Save to Drive */
+        @media print {
+            body * { visibility: hidden; }
+            #pdf_template, #pdf_template * { visibility: visible; }
+            #pdf_template { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 antialiased p-2 md:p-6">
+
+    <div id="modalRefleksi" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 class="font-bold text-gray-800">Kemaskini Refleksi RPH</h3>
+                <button onclick="tutupModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <textarea id="textareaRefleksiModal" class="w-full h-64 p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm leading-relaxed"></textarea>
+            </div>
+            <div class="p-6 border-t border-gray-100 flex justify-end gap-3">
+                <button onclick="tutupModal()" class="px-6 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">Batal</button>
+                <button id="btnSimpanModal" class="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-lg">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto">
+        <div class="mb-4 flex justify-between items-end">
+            <div>
+                <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Dashboard RPH</h1>
+                <p class="text-gray-500 text-xs font-medium">Sistem RPH v3.1 - Full Functional Backup</p>
+            </div>
+            <div class="text-right text-[10px] text-gray-400 uppercase tracking-widest">© 2026 Hairul Goh</div>
+        </div>
+        
+        <div class="glass-card rounded-xl p-4 md:p-5">
+            <form onsubmit="return false;" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">📚 Mata Pelajaran</label>
+                        <select id="subjek" onchange="kemaskiniSenaraiSK()" class="w-full h-10 px-3 bg-gray-50 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Pilih Mata Pelajaran --</option>
+                            <option value="GEOGRAFI">Geografi</option>
+                            <option value="PENDIDIKAN MORAL">Pendidikan Moral</option>
+                            <option value="PENDIDIKAN JASMANI">Pendidikan Jasmani</option>
+                            <option value="PENDIDIKAN KESIHATAN">Pendidikan Kesihatan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">📅 Hari & Tarikh</label>
+                        <div class="flex gap-1">
+                            <input type="text" id="hari_tarikh_display" class="flex-1 h-10 px-3 bg-white border border-gray-300 rounded-lg text-sm font-bold text-blue-700 outline-none">
+                            <div class="relative w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center text-white">
+                                <span>📅</span>
+                                <input type="date" id="kalendar" onchange="updateTarikh(this.value)" class="absolute inset-0 opacity-0 cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">🏫 Tingkatan</label>
+                            <select id="tingkatan" onchange="updateKelas(); kemaskiniSenaraiSK();" class="w-full h-10 border rounded-lg text-sm">
+                                <option value="">-- Pilih --</option>
+                                <option value="1">T1</option><option value="2">T2</option><option value="3">T3</option><option value="4">T4</option><option value="5">T5</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">👥 Kelas</label>
+                            <select id="kelas" class="w-full h-10 border rounded-lg text-sm"><option value="">-- Pilih --</option></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">🕒 Masa Mula</label>
+                        <input type="time" id="masa_mula" value="07:10" class="w-full h-10 border rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">🔚 Masa Tamat</label>
+                        <div class="flex gap-1">
+                            <input type="time" id="masa_tamat" class="flex-1 h-10 border rounded-lg text-sm">
+                            <button type="button" onclick="tambahMasa(30)" class="px-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-[10px] font-bold">+30m</button>
+                            <button type="button" onclick="tambahMasa(60)" class="px-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-[10px] font-bold">+60m</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                    <div><label class="block text-xs font-bold text-gray-700 mb-1">📖 Tema</label><input type="text" id="tema" class="w-full h-10 border rounded-lg text-sm"></div>
+                    <div><label class="block text-xs font-bold text-gray-700 mb-1">📖 Tajuk / Bidang</label><input type="text" id="tajuk_bidang" class="w-full h-10 border rounded-lg text-sm"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">📌 Pilih SK</label>
+                        <select id="select_sk" onchange="updateSP()" class="w-full h-10 border rounded-lg text-sm"></select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">🎯 Standard Pembelajaran</label>
+                        <textarea id="standard_pembelajaran" rows="2" class="w-full p-2 border rounded-lg text-sm"></textarea>
+                    </div>
+                </div>
+
+                <div class="border-t pt-4">
+                    <div class="flex items-center gap-4 mb-2">
+                        <label class="text-xs font-bold text-gray-700">🎯 Objektif Pembelajaran:</label>
+                        <select id="pilih_bil_objektif" onchange="tukarKotakObjektif()" class="text-xs border rounded p-1">
+                            <option value="2">2 Bahagian</option>
+                            <option value="3">3 Bahagian</option>
+                        </select>
+                    </div>
+                    <div id="container_objektif" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                    <div><label class="block text-xs font-bold text-gray-700 mb-1">📝 Aktiviti</label><textarea id="aktiviti" rows="4" class="w-full p-2 border rounded-lg text-sm"></textarea></div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">🛠️ ABM / BBM</label>
+                            <div class="flex flex-wrap gap-2 text-[10px]">
+                                <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200 cursor-pointer"><input type="checkbox" name="abm" value="Buku Teks"> Buku Teks</label>
+                                <label class="flex items-center gap-1 bg-white px-2 py-1 rounded border border-gray-200 cursor-pointer"><input type="checkbox" name="abm" value="Lembaran"> Lembaran</label>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="text-xs font-bold text-gray-700">💡 Refleksi</label>
+                                <button type="button" onclick="salinSPkeRefleksi()" class="text-[9px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase">📋 Salin SP</button>
+                            </div>
+                            <textarea id="refleksi" rows="4" class="w-full p-2 border rounded-lg text-sm">Seramai      /      murid dapat </textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col md:flex-row gap-3">
+                    <button type="button" onclick="janaDanSimpanRPH()" class="flex-1 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black shadow-lg transition-all active:scale-95 text-sm uppercase tracking-wider">Simpan & Jana RPH</button>
+                    <button type="button" onclick="padamSemuaRekod()" class="px-6 py-2 bg-red-50 text-red-600 border border-red-100 font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all text-xs uppercase">Padam Semua</button>
+                </div>
+
+                <div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <label class="block text-xs font-bold text-blue-700 mb-2 uppercase">📂 Import CSV DSKP</label>
+                    <div class="flex gap-2">
+                        <input type="file" id="csvFileInput" accept=".csv" class="text-xs" />
+                        <button type="button" onclick="importCSV()" class="px-3 py-1 bg-white border border-blue-600 text-blue-600 rounded text-xs font-bold hover:bg-blue-600 hover:text-white">Import</button>
+                        <button type="button" onclick="padamDbImport()" class="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-bold hover:bg-red-600 hover:text-white">Padam DB</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="mt-8 glass-card rounded-xl p-4 mb-20">
+            <h2 class="text-sm font-bold text-gray-800 mb-4 uppercase">Rekod RPH Dijana</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead><tr class="text-gray-400 border-b border-gray-100"><th class="pb-2">Tarikh / Hari</th><th class="pb-2">Subjek</th><th class="pb-2">Kelas</th><th class="pb-2 text-right">Tindakan</th></tr></thead>
+                    <tbody id="senarai_rekod_body" class="divide-y divide-gray-50"></tbody>
+                </table>
+            </div>
+            <div class="flex justify-between items-center mt-4 px-2">
+                <button onclick="pageNav(-1)" id="btnPrev" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-[10px] font-bold disabled:opacity-50">⬅️ Sebelumnya</button>
+                <span id="pageIndicator" class="text-[10px] font-bold text-gray-500 uppercase">Halaman 1</span>
+                <button onclick="pageNav(1)" id="btnNext" class="px-3 py-1 bg-gray-200 text-gray-700 rounded text-[10px] font-bold disabled:opacity-50">Seterusnya ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pdf_wrapper">
+        <div id="pdf_template" style="padding: 25px; width: 800px; background: white; line-height: 1.4; color: #111827;">
+            <div style="background-color: #62c5de; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h2 style="color: #ffffff; margin: 0; text-transform: uppercase; letter-spacing: 2px; font-size: 20px; font-weight: 800;">Rekod Pengajaran Harian</h2>
+                <p style="color: #ffffff; margin: 5px 0 0 0; font-size: 13px; font-weight: 600;">Guru MataPelajaran : Hairul Goh</p>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; background-color: #f9fafb; padding: 15px 25px; border: 1.5px solid #e5e7eb; border-top: none;">
+                <div style="width: 50%;">
+                    <div class="pdf-label">Mata Pelajaran:</div><div id="p_subjek" class="pdf-value"></div>
+                    <div class="pdf-label">Tarikh / Hari:</div><div id="p_tarikh" class="pdf-value"></div>
+                    <div class="pdf-label">Masa:</div><div id="p_masa" class="pdf-value"></div>
+                </div>
+                <div style="width: 50%;">
+                    <div class="pdf-label">Tingkatan / Kelas:</div><div id="p_kelas" class="pdf-value"></div>
+                    <div class="pdf-label">Tema / Tajuk:</div><div id="p_tema_tajuk" class="pdf-value">-</div>
+                </div>
+            </div>
+            <div style="border: 1px solid #e5e7eb; border-top: none; padding: 20px 25px; border-radius: 0 0 10px 10px;">
+                <div class="pdf-section-title" style="margin-top: 5px;">Kandungan Kurikulum</div>
+                <div class="pdf-label">Standard Kandungan:</div><p id="p_sk" style="font-size: 11px; margin-bottom: 8px; font-weight: 700;"></p>
+                <div class="pdf-label">Standard Pembelajaran:</div><p id="p_sp" style="white-space: pre-line; margin-bottom: 12px; font-size: 11px; padding-left: 12px; border-left: 3px solid #e5e7eb;"></p>
+                <div class="pdf-section-title">Objektif & Aktiviti</div>
+                <div class="pdf-label">Objektif Pembelajaran:</div><p id="p_obj" style="font-size: 11px; font-style: italic; color: #1e40af; margin-bottom: 12px;"></p>
+                <div class="pdf-label">Aktiviti Pembelajaran:</div><p id="p_aktiviti" style="white-space: pre-line; font-size: 11px; margin-bottom: 12px;"></p>
+                <div class="pdf-section-title">Refleksi</div>
+                <div style="border: 1.5px solid #e5e7eb; padding: 12px; min-height: 80px; border-radius: 6px; background: #ffffff;"><p id="p_refleksi" style="white-space: pre-line; margin: 0; font-size: 11px;"></p></div>
+                <p id="p_abm" style="font-size: 9px; color: #666; margin-top: 10px;"></p>
+            </div>
+            <div style="margin-top: 20px; text-align: right; font-size: 9px; color: #9ca3af; font-style: italic;">Dicetak Digital: <span id="current_print_date"></span></div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CONFIG & STORAGE ---
+        let dskpDataFull = {}; 
+        let rphStorage = [];
+        let currentPage = 1;
+        const recordsPerPage = 5;
+
+        // LOAD DATA (Fix Redeclaration)
+        const initData = () => {
+            const db = localStorage.getItem('dskp_custom_db');
+            if (db) dskpDataFull = JSON.parse(db);
+            const rph = localStorage.getItem('simpanan_rph');
+            if (rph) rphStorage = JSON.parse(rph);
+        };
+        initData();
+
+        // --- 2. DATE FUNCTIONS ---
+        function setTarikhSemasa() {
+            const d = new Date();
+            const iso = d.toISOString().split('T')[0];
+            document.getElementById('kalendar').value = iso;
+            updateTarikh(iso);
+        }
+
+        function updateTarikh(val) {
+            if(!val) return;
+            const d = new Date(val);
+            const fmt = d.toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('hari_tarikh_display').value = fmt;
+        }
+
+        // --- 3. CLASS & TIME LOGIC ---
+        function updateKelas() {
+            const t = document.getElementById('tingkatan').value, k = document.getElementById('kelas');
+            k.innerHTML = '<option value="">-- Pilih --</option>';
+            if(t) {
+                // KELAS A-G DIKEMBALIKAN
+                let list = ["1","2","3"].includes(t) ? ["A","B","C","D","E","F","G"] : ["A","B","C","D","E","F","F & MPV"];
+                list.forEach(v => k.add(new Option(t+" "+v, t+" "+v)));
+            }
+        }
+
+        function tambahMasa(min) {
+            const mula = document.getElementById('masa_mula').value; if(!mula) return;
+            let [h, m] = mula.split(':').map(Number);
+            let d = new Date(); d.setHours(h, m + min);
+            document.getElementById('masa_tamat').value = d.toTimeString().slice(0,5);
+        }
+
+        // --- 4. PAGINATION & TABLE ---
+        function updateTable() {
+            const body = document.getElementById('senarai_rekod_body');
+            const totalPages = Math.ceil(rphStorage.length / recordsPerPage);
+            if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+            
+            const start = (currentPage - 1) * recordsPerPage;
+            const end = start + recordsPerPage;
+            const pageData = rphStorage.slice(start, end);
+
+            body.innerHTML = pageData.map(i => `
+                <tr class="hover:bg-gray-50 border-b">
+                    <td class="py-3">${i.tarikh}</td><td class="py-3 font-bold">${i.subjek}</td><td class="py-3 text-center">${i.kelas}</td>
+                    <td class="py-3 text-right">
+                        <button onclick="bukaEdit(${i.id})" class="bg-orange-50 text-orange-600 px-2 py-1 rounded text-[10px] font-bold uppercase">Edit</button>
+                        <button onclick="buatPDF(${i.id})" class="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold ml-1 uppercase">PDF</button>
+                        <button onclick="padamSatu(${i.id})" class="text-red-500 ml-2 text-lg">🗑️</button>
+                    </td>
+                </tr>`).join('');
+
+            document.getElementById('pageIndicator').innerText = `Halaman ${currentPage} / ${totalPages || 1}`;
+            document.getElementById('btnPrev').disabled = (currentPage === 1);
+            document.getElementById('btnNext').disabled = (currentPage === totalPages || totalPages === 0);
+        }
+
+        function pageNav(dir) { currentPage += dir; updateTable(); }
+
+        // --- 5. RPH ACTIONS ---
+        function janaDanSimpanRPH() {
+            const s = document.getElementById('subjek').value, k = document.getElementById('kelas').value;
+            if(!s || !k) return alert("Sila isi maklumat!");
+            const objs = Array.from(document.querySelectorAll('.obj-item')).map((el, i) => {
+                const labels = ["Kognitif", "Afektif", "Psikomotor"];
+                return el.value ? `${labels[i]}: ${el.value}` : "";
+            }).filter(v => v).join('\n');
+            const data = {
+                id: Date.now(), subjek: s, tarikh: document.getElementById('hari_tarikh_display').value,
+                kelas: k, masa: document.getElementById('masa_mula').value + " - " + document.getElementById('masa_tamat').value,
+                tema_tajuk: document.getElementById('tema').value + " / " + document.getElementById('tajuk_bidang').value,
+                sk: document.getElementById('select_sk').selectedIndex > 0 ? document.getElementById('select_sk').options[document.getElementById('select_sk').selectedIndex].text : "",
+                sp: document.getElementById('standard_pembelajaran').value,
+                objektif: objs, aktiviti: document.getElementById('aktiviti').value,
+                refleksi: document.getElementById('refleksi').value,
+                abm: Array.from(document.querySelectorAll('input[name="abm"]:checked')).map(el => el.value).join(', ')
+            };
+            rphStorage.unshift(data); localStorage.setItem('simpanan_rph', JSON.stringify(rphStorage));
+            updateTable(); alert("Disimpan!");
+        }
+
+        async function buatPDF(id) {
+            const itm = rphStorage.find(x => x.id === id); if(!itm) return;
+            document.getElementById('p_subjek').innerText = itm.subjek;
+            document.getElementById('p_tarikh').innerText = itm.tarikh;
+            document.getElementById('p_masa').innerText = itm.masa;
+            document.getElementById('p_kelas').innerText = itm.kelas;
+            document.getElementById('p_tema_tajuk').innerText = itm.tema_tajuk;
+            document.getElementById('p_sk').innerText = itm.sk;
+            document.getElementById('p_sp').innerText = itm.sp;
+            document.getElementById('p_obj').innerText = "OBJEKTIF:\n" + itm.objektif;
+            document.getElementById('p_aktiviti').innerText = "AKTIVITI:\n" + itm.aktiviti;
+            document.getElementById('p_abm').innerText = "Bahan: " + (itm.abm || "Tiada");
+            document.getElementById('p_refleksi').innerText = itm.refleksi;
+            document.getElementById('current_print_date').innerText = new Date().toLocaleString();
+            
+            // CARA KEDUA: Buka Menu Print (Save to Google Drive)
+            window.print();
+        }
+
+        // --- 6. HELPERS ---
+        function importCSV() {
+            const f = document.getElementById('csvFileInput').files[0]; if(!f) return alert("Pilih fail!");
+            const r = new FileReader();
+            r.onload = function(e) {
+                const rows = e.target.result.split(/\r?\n/), temp = {};
+                rows.forEach((row, i) => {
+                    if(i === 0 || !row.trim()) return;
+                    const c = row.split(",");
+                    if(c.length >= 9) {
+                        const clean = (s) => s ? s.replace(/"/g, "").trim() : "";
+                        const sub = clean(c[8]).split(' ')[0].toUpperCase(), ting = clean(c[8]).match(/\d+/) ? clean(c[8]).match(/\d+/)[0] : "1";
+                        if(!temp[sub]) temp[sub] = {}; if(!temp[sub][ting]) temp[sub][ting] = [];
+                        temp[sub][ting].push({ sk: clean(c[0])+" "+clean(c[2]), sp: clean(c[3])+" "+clean(c[5]), tajuk: clean(c[1]), objektif: clean(c[4])||clean(c[7]) });
+                    }
+                });
+                Object.assign(dskpDataFull, temp); localStorage.setItem('dskp_custom_db', JSON.stringify(dskpDataFull)); location.reload();
+            };
+            r.readAsText(f);
+        }
+        function kemaskiniSenaraiSK() {
+            const s = document.getElementById('subjek').value, t = document.getElementById('tingkatan').value, sk = document.getElementById('select_sk');
+            sk.innerHTML = '<option value="">-- Pilih SK --</option>';
+            if (dskpDataFull[s] && dskpDataFull[s][t]) dskpDataFull[s][t].forEach((item, i) => sk.add(new Option(item.sk, i)));
+        }
+        function updateSP() {
+            const s = document.getElementById('subjek').value, t = document.getElementById('tingkatan').value, i = document.getElementById('select_sk').value;
+            if (i !== "" && dskpDataFull[s][t][i]) {
+                const d = dskpDataFull[s][t][i]; document.getElementById('standard_pembelajaran').value = d.sp;
+                document.getElementById('tema').value = d.tema || ""; document.getElementById('tajuk_bidang').value = d.tajuk || "";
+                const boxes = document.querySelectorAll('.obj-item'); if (boxes.length > 0) boxes[0].value = d.objektif || "";
+            }
+        }
+        function tukarKotakObjektif() {
+            const bil = document.getElementById('pilih_bil_objektif').value, container = document.getElementById('container_objektif');
+            let html = `<div><label class="text-[10px] font-bold text-blue-600 block uppercase mb-1">🧠 Kognitif</label><textarea class="obj-item w-full p-2 border rounded-lg text-sm"></textarea></div>
+                        <div><label class="text-[10px] font-bold text-green-600 block uppercase mb-1">❤️ Afektif</label><textarea class="obj-item w-full p-2 border rounded-lg text-sm"></textarea></div>`;
+            if(bil === "3") { container.classList.replace('md:grid-cols-2', 'md:grid-cols-3'); html += `<div><label class="text-[10px] font-bold text-purple-600 block uppercase mb-1">💪 Psikomotor</label><textarea class="obj-item w-full p-2 border rounded-lg text-sm"></textarea></div>`; }
+            else { container.classList.replace('md:grid-cols-3', 'md:grid-cols-2'); }
+            container.innerHTML = html;
+        }
+        function padamDbImport() { if(confirm("Padam DB?")) { localStorage.removeItem('dskp_custom_db'); location.reload(); } }
+        function bukaEdit(id) { 
+            const r = rphStorage.find(x => x.id === id); if(r) { document.getElementById('textareaRefleksiModal').value = r.refleksi; 
+            document.getElementById('modalRefleksi').classList.remove('hidden'); 
+            document.getElementById('btnSimpanModal').onclick = () => { r.refleksi = document.getElementById('textareaRefleksiModal').value; localStorage.setItem('simpanan_rph', JSON.stringify(rphStorage)); updateTable(); tutupModal(); }; } 
+        }
+        function tutupModal() { document.getElementById('modalRefleksi').classList.add('hidden'); }
+        function padamSatu(id) { if(confirm("Padam?")) { rphStorage = rphStorage.filter(x => x.id !== id); localStorage.setItem('simpanan_rph', JSON.stringify(rphStorage)); updateTable(); } }
+        function padamSemuaRekod() { if(confirm("Padam semua?")) { rphStorage = []; localStorage.removeItem('simpanan_rph'); updateTable(); } }
+        function salinSPkeRefleksi() { document.getElementById('refleksi').value = "Seramai      /      murid dapat menguasai: " + document.getElementById('standard_pembelajaran').value; }
+
+        window.onload = () => { setTarikhSemasa(); updateTable(); document.getElementById('pilih_bil_objektif').value = "2"; tukarKotakObjektif(); };
+    </script>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-analytics.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+      
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+          apiKey: "AIzaSyBp1zO9mDI6OOJQAXlM_XV8ibeGlcNENCc",
+          authDomain: "e-lp-3d6c3.firebaseapp.com",
+          projectId: "e-lp-3d6c3",
+          storageBucket: "e-lp-3d6c3.firebasestorage.app",
+          messagingSenderId: "824945188661",
+          appId: "1:824945188661:web:272f17e3e1dc35114bb67c",
+          measurementId: "G-Q5CKR2E16X"
+        };
+      
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+      </script>
+</body>
+</html>
