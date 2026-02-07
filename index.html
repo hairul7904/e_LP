@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="ms" class="h-full bg-gray-50">
 <head>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+<script>
+  // Gantikan bahagian ini dengan kod Config yang anda salin dari Firebase tadi
+  const firebaseConfig = {
+    apiKey: "AIzaSyBp1zO9mDI6OOJQAXlM_XV8ibeGlcNENCc",
+    authDomain: "e-lp-3d6c3.firebaseapp.com",
+    databaseURL: "https://e-lp-3d6c3-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "e-lp-3d6c3",
+    storageBucket: "e-lp-3d6c3.firebasestorage.app",
+    messagingSenderId: "824945188661",
+    appId: "1:824945188661:web:272f17e3e1dc35114bb67c",
+  };
+
+  // Mulakan Firebase
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  // Contoh cara simpan data: 
+  // database.ref('rph_data/').set({ tajuk: "RPH Hari Ini", tarikh: "2026-02-07" });
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard RPH Digital - Hairul Goh</title>
@@ -418,3 +440,4 @@
       </script>
 </body>
 </html>
+
