@@ -5,6 +5,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
 <script>
+ <script>
+  // 1. KONFIGURASI FIREBASE
   const firebaseConfig = {
     apiKey: "AIzaSyBp1zO9mDI6OOJQAXlM_XV8ibeGlcNENCc",
     authDomain: "e-lp-3d6c3.firebaseapp.com",
@@ -18,7 +20,7 @@
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
 
-  // FUNGSI SIMPAN KE CLOUD (Untuk Sync Laptop & Tablet)
+  // 2. FUNGSI SIMPAN (SYNC KE CLOUD)
   function saveData() {
     const dataRPH = {
       tarikh: document.getElementById('tarikh').value,
@@ -29,16 +31,16 @@
       timestamp: Date.now()
     };
 
-    // Guna .push() supaya data masuk ke Firebase Realtime Database
+    // Simpan ke Firebase supaya Tablet dapat akses
     database.ref('rph_records/').push(dataRPH)
       .then(() => {
         alert("Berjaya Simpan ke Cloud!");
-        document.getElementById('rphForm').reset();
+        // Jangan reset borang jika mahu print PDF terus selepas simpan
       })
-      .catch((error) => alert("Ralat: " + error.message));
+      .catch((error) => alert("Ralat Sync: " + error.message));
   }
 
-  // FUNGSI AMBIL DATA (Supaya Tablet sentiasa paparkan data terkini)
+  // 3. FUNGSI TARIK DATA (SYNC AUTOMATIK)
   database.ref('rph_records/').on('value', (snapshot) => {
     const data = snapshot.val();
     const tableBody = document.getElementById('rph_table_body');
@@ -48,17 +50,35 @@
     if (data) {
       Object.keys(data).reverse().forEach(key => {
         const record = data[key];
-        let row = `
-          <tr class="hover:bg-gray-50">
-            <td class="p-3 border text-sm">${record.tarikh}</td>
-            <td class="p-3 border font-bold text-blue-900">${record.subjek}</td>
-            <td class="p-3 border text-sm">${record.tajuk}</td>
-            <td class="p-3 border text-sm text-gray-600">${record.objektif}</td>
-          </tr>`;
+        let row = `<tr>
+          <td class="p-3 border">${record.tarikh}</td>
+          <td class="p-3 border font-bold">${record.subjek}</td>
+          <td class="p-3 border">${record.tajuk}</td>
+          <td class="p-3 border">${record.objektif}</td>
+        </tr>`;
         tableBody.innerHTML += row;
       });
     }
   });
+
+  // 4. FUNGSI PRINT PDF (DIBETULKAN)
+  async function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Pastikan ID 'pdf_template' atau 'main_content' wujud dalam HTML anda
+    const element = document.getElementById('main_content') || document.body;
+
+    html2canvas(element, { scale: 2 }).then(canvas => {
+      const imgData = canvas.toDataURL('image/png');
+      const imgProps = doc.getImageProperties(imgData);
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      doc.save("RPH_Digital.pdf");
+    });
+  }
 </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -477,6 +497,7 @@
       </script>
 </body>
 </html>
+
 
 
 
