@@ -19,6 +19,44 @@
   // Mulakan Firebase
   firebase.initializeApp(firebaseConfig);
   const database = firebase.database();
+    // --- KOD PENYELARASAN (HANYA TAMBAH INI) ---
+  
+  // Fungsi untuk hantar data dari borang ke Firebase
+  function saveData() {
+    const dataRPH = {
+      tarikh: document.getElementById('tarikh')?.value || '',
+      subjek: document.getElementById('subjek')?.value || '',
+      tajuk: document.getElementById('tajuk')?.value || '',
+      objektif: document.getElementById('objektif')?.value || '',
+      aktiviti: document.getElementById('aktiviti')?.value || '',
+      timestamp: Date.now()
+    };
+
+    database.ref('rph_records/').push(dataRPH)
+      .then(() => alert("Berjaya Simpan ke Cloud! Tablet akan dikemas kini."))
+      .catch((error) => alert("Gagal: " + error.message));
+  }
+
+  // Fungsi untuk tarik data dari Firebase ke Jadual (Laptop & Tablet)
+  database.ref('rph_records/').on('value', (snapshot) => {
+    const data = snapshot.val();
+    const tableBody = document.getElementById('rph_table_body');
+    if (!tableBody) return; 
+
+    tableBody.innerHTML = ''; 
+    if (data) {
+      Object.keys(data).reverse().forEach(key => {
+        const record = data[key];
+        let row = `<tr>
+          <td class="p-3 border">${record.tarikh}</td>
+          <td class="p-3 border font-bold">${record.subjek}</td>
+          <td class="p-3 border">${record.tajuk}</td>
+          <td class="p-3 border text-blue-800">${record.objektif}</td>
+        </tr>`;
+        tableBody.innerHTML += row;
+      });
+    }
+  });
 
   // Contoh cara simpan data: 
   // database.ref('rph_data/').set({ tajuk: "RPH Hari Ini", tarikh: "2026-02-07" });
@@ -440,6 +478,7 @@
       </script>
 </body>
 </html>
+
 
 
 
